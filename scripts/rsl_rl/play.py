@@ -48,6 +48,7 @@ import gymnasium as gym
 import os
 import time
 import torch
+import shutil
 
 from rsl_rl.runners import OnPolicyRunner
 
@@ -62,6 +63,9 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 
 import RSL_H1Lab.tasks  # noqa: F401
+
+notebook_path = "cmondosomething.ipynb"
+
 
 
 def main():
@@ -139,6 +143,7 @@ def main():
     # reset environment
     obs, _ = env.get_observations()
     timestep = 0
+    joint_log = []
     # simulate environment
     while simulation_app.is_running():
         start_time = time.time()
@@ -148,6 +153,19 @@ def main():
             actions = policy(obs)
             # env stepping
             obs, _, _, _ = env.step(actions)
+
+        # --- Joint logging ---
+        base_env = env.unwrapped
+        # print(dir(base_env))
+        # print(dir(base_env.scene))
+        # print(base_env.scene.articulations.keys())
+        try:
+            joint_pos = base_env.scene.articulations["robot"].data.joint_pos.cpu().numpy()
+        except AttributeError:
+            joint_pos = base_env.scene.articulations[0]["robot"].data.joint_pos.cpu().numpy()
+        joint_log.append(joint_pos.copy())
+        # # --- End joint logging ---
+
         if args_cli.video:
             timestep += 1
             # Exit the play loop after recording one video
@@ -159,7 +177,14 @@ def main():
         if args_cli.real_time and sleep_time > 0:
             time.sleep(sleep_time)
 
+    # Save joint log after simulation
+    if len(joint_log) > 0:
+        import numpy as np
+        np.save(os.path.join(log_dir)+"/joint_log_play.npy", np.array(joint_log))
+        shutil.copy2(notebook_path, log_dir)
+
     # close the simulator
+    print(env.observation_space)
     env.close()
 
 

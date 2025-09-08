@@ -56,7 +56,7 @@ class H1Rewards(RewardsCfg):
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.5,
+        weight=-0.75,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw", ".*_hip_roll"])},
     )
     joint_deviation_arms = RewTerm(
@@ -65,7 +65,7 @@ class H1Rewards(RewardsCfg):
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_shoulder_.*", ".*_elbow"])},
     )
     joint_deviation_torso = RewTerm(
-        func=mdp.joint_deviation_l1, weight=-0.1, params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso")}
+        func=mdp.joint_deviation_l1, weight=-0.3, params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso")}
     )
 
 
@@ -82,9 +82,9 @@ class H1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
 
         # Randomization
-        # self.events.push_robot.params["velocity_range"] = {"x": (-1.5, 1.5), "y": (-1.5, 1.5)}
-        # self.events.push_robot.interval_range_s = (10.0, 20.0)
-        self.events.push_robot = None  # Disable random pushing
+        self.events.push_robot.params["velocity_range"] = {"x": (-1.5, 1.5), "y": (-1.5, 1.5)}
+        self.events.push_robot.interval_range_s = (10.0, 20.0)
+        # self.events.push_robot = None  # Disable random pushing
         self.events.add_base_mass = None
         self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
         # self.events.base_external_force_torque.params["asset_cfg"].body_names = ["right_elbow_link"]
@@ -116,7 +116,7 @@ class H1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.weight = -1.25e-7
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-2.5, 2.5)
+        self.commands.base_velocity.ranges.lin_vel_x = (-3.5, 3.5)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
 
@@ -142,7 +142,7 @@ class H1RoughEnvCfg_PLAY(H1RoughEnvCfg):
             self.scene.terrain.terrain_generator.num_cols = 5
             self.scene.terrain.terrain_generator.curriculum = False
 
-        self.commands.base_velocity.ranges.lin_vel_x = (1.5, 1.5)
+        self.commands.base_velocity.ranges.lin_vel_x = (2.0, 2.0)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
         self.commands.base_velocity.ranges.heading = (0.0, 0.0)
@@ -150,6 +150,8 @@ class H1RoughEnvCfg_PLAY(H1RoughEnvCfg):
         self.observations.policy.enable_corruption = False
         # remove random pushing
         # self.events.base_external_force_torque = None
-        self.events.push_robot = None
+        # self.events.push_robot = None
+        self.events.push_robot.params["velocity_range"] = {"x": (-1.0, 1.0), "y": (-0.05, 0.05)}
+        self.events.push_robot.interval_range_s = (10.0, 20.0)
         self.events.base_external_force_torque.params["asset_cfg"].body_names = [".*torso_link", ".*elbow_link"]
         self.events.base_external_force_torque.params["force_range"] = (-10.0, -5.0)
