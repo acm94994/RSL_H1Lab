@@ -133,3 +133,14 @@ Some examples of packages that can likely be excluded are:
 "<path-to-isaac-sim>/extscache/omni.services.*"     // Services tools
 ...
 ```
+
+
+
+```bash
+python scripts/rsl_rl/train.py --task IsaacH1RoughRSL <other parameters>
+```
+
+
+```bash
+python scripts/rsl_rl/play.py --task IsaacH1RoughPlayRSL <other parameters>
+```
