@@ -9,7 +9,7 @@
 # Register Gym environments.
 ##
 
-from isaaclab_tasks.utils import import_packages
+from RSL_H1Lab.tasks.utils import import_packages
 
 # The blacklist is used to prevent importing configs from sub-packages
 _BLACKLIST_PKGS = ["utils", ".mdp"]

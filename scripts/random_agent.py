@@ -33,7 +33,7 @@ import gymnasium as gym
 import torch
 
 import isaaclab_tasks  # noqa: F401
-from isaaclab_tasks.utils import parse_env_cfg
+from RSL_H1Lab.tasks.utils import parse_env_cfg
 
 import RSL_H1Lab.tasks  # noqa: F401
 
