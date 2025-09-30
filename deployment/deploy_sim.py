@@ -29,7 +29,7 @@ from utils import (
     remap_mujoco_to_pytorch,
 )
 
-POLICY_PATH = "policy.pt"
+POLICY_PATH = "h1fpolicy.pt"
 
 
 class TorchController:
@@ -73,15 +73,12 @@ class TorchController:
     # projected_gravity (3) + velocity_commands (3) + joint_pos (23) + joint_vel (23) + actions (23)
     
     # Get projected gravity (3 dimensions)
-    # imu_xmat = data.site_xmat[model.site("imu_in_pelvis").id].reshape(3, 3)
-    # projected_gravity = imu_xmat.T @ np.array([0, 0, -1])
     world_gravity = model.opt.gravity
-    # world_gravity = np.array([0.0,0.0,0.0])
-    # print(world_gravity)
     world_gravity = world_gravity / np.linalg.norm(world_gravity)  # Normalize
     imu_xmat = data.site_xmat[model.site("imu").id].reshape(3, 3)
     projected_gravity = imu_xmat.T @ world_gravity
     # print(f"Projected gravity: {projected_gravity}")
+    print(projected_gravity.shape)
     # Get velocity commands (3 dimensions)
     velocity_commands = self._controller.get_command()
     # print(f"Velocity commands: {velocity_commands}")
