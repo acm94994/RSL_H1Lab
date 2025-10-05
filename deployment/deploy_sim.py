@@ -25,12 +25,14 @@ class TorchController:
         vel_scale_y: float = 1.0,
         vel_scale_rot: float = 1.0,
     ):
-        self._policy = torch.load(policy_path, weights_only=False)
+        # self._policy = torch.load(policy_path, weights_only=False)
+        self._policy = torch.jit.load(policy_path)
         self._policy.eval()  # Set to evaluation mode
 
         self._action_scale = action_scale
         self._default_angles = default_angles
-        self._last_action = np.zeros_like(default_angles, dtype=np.float32)  # In MuJoCo order
+        # self._last_action = np.zeros_like(default_angles, dtype=np.float32)  # In MuJoCo order
+        self._last_action = default_angles.copy()  # In MuJoCo order
 
         self._counter = 0
         self._n_substeps = n_substeps
@@ -51,9 +53,13 @@ class TorchController:
         """Get the observation for the policy."""
 
         world_gravity = model.opt.gravity
+        # print(world_gravity)
         world_gravity /= np.linalg.norm(world_gravity) # Normalize gravity vector   
+        # world_gravity = np.array([0, 0, 0])  # Override to ensure consistent gravity direction
         imu_xmat = data.site_xmat[model.site("imu").id].reshape(3, 3)
         projected_gravity = imu_xmat.T @ world_gravity  # Project gravity into IMU frame
+        # print(imu_xmat)
+        # print(world_gravity, projected_gravity)
         # print(projected_gravity.shape) # (3,)
         velocity_commands = self._controller.get_command()  # (3,)
 
@@ -63,8 +69,15 @@ class TorchController:
         joint_pos_pytorch = remap_mujoco_to_pytorch(joint_pos_mujoco)
         joint_vel_pytorch = remap_mujoco_to_pytorch(joint_vel_mujoco)
         last_action_pytorch = remap_mujoco_to_pytorch(self._last_action)
-        base_lin_vel = data.qvel[3:6]
-        base_ang_vel = data.qvel[0:3]
+        base_ang_vel = data.qvel[3:6]
+        base_lin_vel = data.qvel[0:3]
+
+        # print("Base lin vel:", base_lin_vel
+        #       , "Base ang vel:", base_ang_vel
+        #       , "Projected gravity:", projected_gravity
+        #       , "Velocity commands:", velocity_commands
+        #       )
+        # print(velocity_commands)
 
         # boilerplate for height_scan
         height_scan = np.zeros(187, dtype=np.float32)
@@ -109,42 +122,13 @@ class TorchController:
 
             # Convert actions from PyTorch order to MuJoCo order
             mujoco_pred = remap_pytorch_to_mujoco(pytorch_pred)
-            print(mujoco_pred)
+            # print(mujoco_pred)
 
             self._last_action = mujoco_pred.copy()  # Store in MuJoCo order
             # data.ctrl[:] =  self._default_angles
             # print(mujoco_pred * self._action_scale + self._default_angles)
 
             data.ctrl[:] = mujoco_pred * self._action_scale + self._default_angles
-
-def load_callback(model=None, data=None):
-    mujoco.set_mjcb_control(None)
-
-
-    model = mujoco.MjModel.from_xml_path('./h1_description/mjcf/scene.xml')
-    data = mujoco.MjData(model)
-
-    mujoco.mj_resetDataKeyframe(model, data, 1)
-
-    # ctrl_dt = 0.02
-    sim_dt = 0.001
-    n_substeps = 4
-    model.opt.timestep = sim_dt
-
-    policy = TorchController(
-        policy_path=POLICY_PATH,
-        default_angles=np.array(default_angles_config),
-        n_substeps=n_substeps,
-        action_scale=0.75,
-        vel_scale_x=1.0,
-        vel_scale_y=1.0,
-        vel_scale_rot=1.0,
-    )
-
-    mujoco.set_mjcb_control(policy.get_control)
-
-    return model, data
-
-
-if __name__ == "__main__":
-    viewer.launch(loader=load_callback)
+            # return mujoco_pred * self._action_scale + self._default_angles
+            # print(model.opt.integrator)
+            # print(data.qpos)

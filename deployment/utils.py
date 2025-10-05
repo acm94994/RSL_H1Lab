@@ -5,7 +5,7 @@ import tty
 import termios
 import sys
 
-G1_NUM_MOTOR = 23
+# G1_NUM_MOTOR = 23
 
 
 # default_angles_config = np.array([
@@ -33,25 +33,47 @@ G1_NUM_MOTOR = 23
 default_angles_config = np.array([
     0.0,    # LeftHipYaw
     0.0,    # LeftHipRoll
-    0.0,   # LeftHipPitch
-    0.0,   # LeftKnee
-    0.0,  # LeftAnkle
+    -0.28,   # LeftHipPitch
+    0.79,   # LeftKnee
+    -0.52,   # LeftAnkle
     0.0,    # RightHipYaw
     0.0,    # RightHipRoll
-    0.0,   # RightHipPitch
-    0.0,   # RightKnee
-    0.0,  # RightAnkle
+    -0.28,   # RightHipPitch
+    0.79,   # RightKnee
+    -0.52,  # RightAnkle
     0.0,    # Torso
-    0.0,   # LeftShoulderPitch
+    0.28,   # LeftShoulderPitch
     0.0,   # LeftShoulderRoll
     0.0,    # LeftShoulderYaw
-    0.0,   # LeftElbow
-    0.0,   # RightShoulderPitch
+    0.52,   # LeftElbow
+    0.28,   # RightShoulderPitch
     0.0,  # RightShoulderRoll
     0.0,    # RightShoulderYaw
-    0.0,   # RightElbow
+    0.52,   # RightElbow
   ])
 
+
+# default_angles_config = np.array([
+#     0.0,    # LeftHipYaw
+#     0.0,    # LeftHipRoll
+#     0.0,   # LeftHipPitch
+#     0.0,   # LeftKnee
+#     0.0,   # LeftAnkle
+#     0.0,    # RightHipYaw
+#     0.0,    # RightHipRoll
+#     0.0,   # RightHipPitch
+#     0.0,   # RightKnee
+#     0.0,  # RightAnkle
+#     0.0,    # Torso
+#     0.0,   # LeftShoulderPitch
+#     0.0,   # LeftShoulderRoll
+#     0.0,    # LeftShoulderYaw
+#     0.0,   # LeftElbow
+#     0.0,   # RightShoulderPitch
+#     0.0,  # RightShoulderRoll
+#     0.0,    # RightShoulderYaw
+#     0.0,   # RightElbow
+#   ])
 
 
 class H1JointIndex:
@@ -79,45 +101,45 @@ class H1JointIndex:
 class H1PyTorchJointIndex:
     """Joint indices based on the order in h1_description/scene_mjx.xml (23 DoF model)."""
     LeftHipYaw = 0
-    LeftHipRoll = 1
-    LeftHipPitch = 2
-    LeftKnee = 3
-    LeftAnkle = 4
-    RightHipYaw = 5
-    RightHipRoll = 6
-    RightHipPitch = 7
-    RightKnee = 8
-    RightAnkle = 9
-    Torso = 10
-    LeftShoulderPitch = 11
-    LeftShoulderRoll = 12
+    RightHipYaw = 1
+    Torso = 2
+    LeftHipRoll = 3
+    RightHipRoll = 4
+    LeftShoulderPitch = 5
+    RightShoulderPitch = 6
+    LeftHipPitch = 7
+    RightHipPitch = 8
+    LeftShoulderRoll = 9
+    RightShoulderRoll = 10
+    LeftKnee = 11
+    RightKnee = 12
     LeftShoulderYaw = 13
-    LeftElbow = 14
-    RightShoulderPitch = 15
-    RightShoulderRoll = 16
-    RightShoulderYaw = 17
+    RightShoulderYaw = 14
+    LeftAnkle = 15
+    RightAnkle = 16
+    LeftElbow = 17
     RightElbow = 18
 
 pytorch2mujoco_idx = [
     # PyTorch idx -> MuJoCo idx
     H1JointIndex.LeftHipYaw,        # 5: left_hip_yaw_joint -> LeftHipYaw (2)
-    H1JointIndex.LeftHipRoll,       # 3: left_hip_roll_joint -> LeftHipRoll (1)
-    H1JointIndex.LeftHipPitch,      # 0: left_hip_pitch_joint -> LeftHipPitch (0)
-    H1JointIndex.LeftKnee,          # 7: left_knee_joint -> LeftKnee (3)
-    H1JointIndex.LeftAnkle,        # 11: left_ankle_joint -> LeftAnkle (4)
     H1JointIndex.RightHipYaw,       # 6: right_hip_yaw_joint -> RightHipYaw (8)
-    H1JointIndex.RightHipRoll,      # 4: right_hip_roll_joint -> RightHipRoll (7)
-    H1JointIndex.RightHipPitch,     # 1: right_hip_pitch_joint -> RightHipPitch (6)
-    H1JointIndex.RightKnee,         # 8: right_knee_joint -> RightKnee (9)
-    H1JointIndex.RightAnkle,   # 12: right_ankle_pitch_joint -> RightAnklePitch (10)
     H1JointIndex.Torso,          # 2: waist_yaw_joint -> WaistYaw (12)
+    H1JointIndex.LeftHipRoll,       # 3: left_hip_roll_joint -> LeftHipRoll (1)
+    H1JointIndex.RightHipRoll,      # 4: right_hip_roll_joint -> RightHipRoll (7)
     H1JointIndex.LeftShoulderPitch, # 9: left_shoulder_pitch_joint -> LeftShoulderPitch (13)
-    H1JointIndex.LeftShoulderRoll,  # 13: left_shoulder_roll_joint -> LeftShoulderRoll (14)
-    H1JointIndex.LeftShoulderYaw,   # 17: left_shoulder_yaw_joint -> LeftShoulderYaw (15)
-    H1JointIndex.LeftElbow,         # 19: left_elbow_joint -> LeftElbow (16)
     H1JointIndex.RightShoulderPitch,# 10: right_shoulder_pitch_joint -> RightShoulderPitch (18)
+    H1JointIndex.LeftHipPitch,      # 0: left_hip_pitch_joint -> LeftHipPitch (0)
+    H1JointIndex.RightHipPitch,     # 1: right_hip_pitch_joint -> RightHipPitch (6)
+    H1JointIndex.LeftShoulderRoll,  # 13: left_shoulder_roll_joint -> LeftShoulderRoll (14)
     H1JointIndex.RightShoulderRoll, # 14: right_shoulder_roll_joint -> RightShoulderRoll (19)
+    H1JointIndex.LeftKnee,          # 7: left_knee_joint -> LeftKnee (3)
+    H1JointIndex.RightKnee,         # 8: right_knee_joint -> RightKnee (9)
+    H1JointIndex.LeftShoulderYaw,   # 17: left_shoulder_yaw_joint -> LeftShoulderYaw (15)
     H1JointIndex.RightShoulderYaw,  # 18: right_shoulder_yaw_joint -> RightShoulderYaw (20)
+    H1JointIndex.LeftAnkle,        # 11: left_ankle_joint -> LeftAnkle (4)
+    H1JointIndex.RightAnkle,   # 12: right_ankle_pitch_joint -> RightAnklePitch (10)
+    H1JointIndex.LeftElbow,         # 19: left_elbow_joint -> LeftElbow (16)
     H1JointIndex.RightElbow,        # 20: right_elbow_joint -> RightElbow (21)
 ]
 
