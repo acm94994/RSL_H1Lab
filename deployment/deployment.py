@@ -90,7 +90,7 @@ def loaded():
         policy_path=POLICY_PATH,
         default_angles=np.array(default_angles_config),
         n_substeps=1,
-        action_scale=1.5,
+        action_scale=0.5,
         vel_scale_x=1.0,
         vel_scale_y=1.0,
         vel_scale_rot=1.0,

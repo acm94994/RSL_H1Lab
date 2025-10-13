@@ -128,7 +128,8 @@ class TorchController:
             # data.ctrl[:] =  self._default_angles
             # print(mujoco_pred * self._action_scale + self._default_angles)
 
-            data.ctrl[:] = mujoco_pred * self._action_scale + self._default_angles
+            data.ctrl[:] = mujoco_pred * self._action_scale #+ self._default_angles
             # return mujoco_pred * self._action_scale + self._default_angles
+            print(mujoco_pred * self._action_scale + self._default_angles)
             # print(model.opt.integrator)
             # print(data.qpos)
