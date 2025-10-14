@@ -127,7 +127,7 @@ def remap_mujoco_to_pytorch(mujoco_data: np.ndarray) -> np.ndarray:
 
 
 
-POLICY_PATH = "data/policy.pt"
+POLICY_PATH = "assets/policy.pt"
 
 
 class TorchController:
@@ -246,7 +246,7 @@ class TorchController:
 
             data.ctrl[:] = mujoco_pred * self._action_scale #+ self._default_angles
             # return mujoco_pred * self._action_scale + self._default_angles
-            print(mujoco_pred * self._action_scale + self._default_angles)
+            # print(mujoco_pred * self._action_scale + self._default_angles) #Prints the output control
             # print(model.opt.integrator)
             # print(data.qpos)
 
@@ -254,7 +254,7 @@ class TorchController:
 
 def load_model():
     # Path to your H1 MJCF
-    model = mujoco.MjModel.from_xml_path("./data/h1_description/mjcf/scene.xml")
+    model = mujoco.MjModel.from_xml_path("./assets/h1_description/mjcf/scene.xml")
 
     # ======= Basic physics setup =======
     model.opt.timestep = 0.005            # small, stable integration step
