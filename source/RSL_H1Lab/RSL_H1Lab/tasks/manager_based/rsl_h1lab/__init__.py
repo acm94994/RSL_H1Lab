@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from . import agents
+from . import agents, env_cfg
 
 ##
 # Register Gym environments.
@@ -16,7 +16,7 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.rough_env_cfg:H1RoughEnvCfg",
+        "env_cfg_entry_point": f"{env_cfg.__name__}.rough_env_cfg:H1RoughEnvCfg",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:H1RoughPPORunnerCfg",
     },
 )
@@ -27,7 +27,7 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.rough_env_cfg:H1RoughEnvCfg_PLAY",
+        "env_cfg_entry_point": f"{env_cfg.__name__}.rough_env_cfg:H1RoughEnvCfg_PLAY",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:H1RoughPPORunnerCfg",
     },
 )
@@ -38,7 +38,7 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.flat_env_cfg:H1FlatEnvCfg",
+        "env_cfg_entry_point": f"{env_cfg.__name__}.flat_env_cfg:H1FlatEnvCfg",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:H1FlatPPORunnerCfg",
     },
 )
@@ -49,7 +49,7 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.flat_env_cfg:H1FlatEnvCfg_PLAY",
+        "env_cfg_entry_point": f"{env_cfg.__name__}.flat_env_cfg:H1FlatEnvCfg_PLAY",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:H1FlatPPORunnerCfg",
     },
 )

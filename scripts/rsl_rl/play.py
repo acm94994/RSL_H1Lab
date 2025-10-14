@@ -278,7 +278,7 @@ from RSL_H1Lab.tasks.utils.hydra import hydra_task_config
 import RSL_H1Lab.tasks  # noqa: F401
 
 # PLACEHOLDER: Extension template (do not remove this comment)
-notebook_path = "cmondosomething.ipynb"
+notebook_path = "tests/joint_position_logs.ipynb"
 
 @hydra_task_config(args_cli.task, args_cli.agent)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
@@ -370,8 +370,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
     print(normalizer, "The normalizer value is")
-    export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.pt")
-    export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
+    export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename=f"{args_cli.task}_policy.pt")
+    export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename=f"{args_cli.task}_policy.onnx")
 
     dt = env.unwrapped.step_dt
 
