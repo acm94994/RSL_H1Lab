@@ -238,17 +238,12 @@ class TorchController:
 
             # Convert actions from PyTorch order to MuJoCo order
             mujoco_pred = remap_pytorch_to_mujoco(pytorch_pred)
-            # print(mujoco_pred)
 
             self._last_action = mujoco_pred.copy()  # Store in MuJoCo order
-            # data.ctrl[:] =  self._default_angles
+            
             # print(mujoco_pred * self._action_scale + self._default_angles)
 
-            data.ctrl[:] = mujoco_pred * self._action_scale #+ self._default_angles
-            # return mujoco_pred * self._action_scale + self._default_angles
-            # print(mujoco_pred * self._action_scale + self._default_angles) #Prints the output control
-            # print(model.opt.integrator)
-            # print(data.qpos)
+            data.ctrl[:] = mujoco_pred * self._action_scale + self._default_angles
 
 
 

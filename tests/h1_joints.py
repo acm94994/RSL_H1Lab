@@ -405,176 +405,176 @@ def apply_pose(scene: InteractiveScene, pose):
     print(f"  axis_alignment_reward={float(align_reward):.6f}")
 
 
-def compare_joint_orders():
-    """Print comparison of different joint ordering systems for debugging."""
-    print("\n" + "=" * 100)
-    print("JOINT ORDER COMPARISON (for debugging mapping issues)")
-    print("=" * 100)
+# def compare_joint_orders():
+#     """Print comparison of different joint ordering systems for debugging."""
+#     print("\n" + "=" * 100)
+#     print("JOINT ORDER COMPARISON (for debugging mapping issues)")
+#     print("=" * 100)
     
-    # Expected joint names in Isaac Lab order
-    expected_isaac_joints = [
-        "left_hip_pitch_joint",
-        "right_hip_pitch_joint", 
-        "waist_yaw_joint",
-        "left_hip_roll_joint",
-        "right_hip_roll_joint",
-        "left_hip_yaw_joint",
-        "right_hip_yaw_joint",
-        "left_knee_joint",
-        "right_knee_joint",
-        "left_shoulder_pitch_joint",
-        "right_shoulder_pitch_joint",
-        "left_ankle_pitch_joint",
-        "right_ankle_pitch_joint",
-        "left_shoulder_roll_joint",
-        "right_shoulder_roll_joint",
-        "left_ankle_roll_joint",
-        "right_ankle_roll_joint",
-        "left_shoulder_yaw_joint",
-        "right_shoulder_yaw_joint",
-        "left_elbow_joint",
-        "right_elbow_joint",
-        "left_wrist_roll_joint",
-        "right_wrist_roll_joint",
-    ]
+#     # Expected joint names in Isaac Lab order
+#     expected_isaac_joints = [
+#         "left_hip_pitch_joint",
+#         "right_hip_pitch_joint", 
+#         "waist_yaw_joint",
+#         "left_hip_roll_joint",
+#         "right_hip_roll_joint",
+#         "left_hip_yaw_joint",
+#         "right_hip_yaw_joint",
+#         "left_knee_joint",
+#         "right_knee_joint",
+#         "left_shoulder_pitch_joint",
+#         "right_shoulder_pitch_joint",
+#         "left_ankle_pitch_joint",
+#         "right_ankle_pitch_joint",
+#         "left_shoulder_roll_joint",
+#         "right_shoulder_roll_joint",
+#         "left_ankle_roll_joint",
+#         "right_ankle_roll_joint",
+#         "left_shoulder_yaw_joint",
+#         "right_shoulder_yaw_joint",
+#         "left_elbow_joint",
+#         "right_elbow_joint",
+#         "left_wrist_roll_joint",
+#         "right_wrist_roll_joint",
+#     ]
     
-    print("Expected Isaac Lab Joint Order:")
-    for i, joint in enumerate(expected_isaac_joints):
-        print(f"{i:2d}: {joint}")
+#     print("Expected Isaac Lab Joint Order:")
+#     for i, joint in enumerate(expected_isaac_joints):
+#         print(f"{i:2d}: {joint}")
     
-    print("=" * 100)
+#     print("=" * 100)
 
 
-def run_debug_visualization(sim: sim_utils.SimulationContext, scene: InteractiveScene):
-    """Run the debug visualization with keyboard controls."""
-    # Load poses
-    poses_path = "/home/logan/Projects/g1_crawl/scripts/experiments/poses.json"
-    # poses_path = "/home/logan/Projects/g1_crawl/scripts/experiments/gravity-test.json"
-    try:
-        poses = load_poses_from_json(poses_path)
-        if len(poses) == 0:
-            print(f"[WARN] No poses found in {poses_path}. Falling back to debug values.")
-            poses = None
-        else:
-            print(f"[INFO] Loaded {len(poses)} poses from {poses_path}")
-    except Exception as e:
-        print(f"[ERROR] Failed to load poses from {poses_path}: {e}")
-        poses = None
+# def run_debug_visualization(sim: sim_utils.SimulationContext, scene: InteractiveScene):
+#     """Run the debug visualization with keyboard controls."""
+#     # Load poses
+#     poses_path = "/home/logan/Projects/g1_crawl/scripts/experiments/poses.json"
+#     # poses_path = "/home/logan/Projects/g1_crawl/scripts/experiments/gravity-test.json"
+#     try:
+#         poses = load_poses_from_json(poses_path)
+#         if len(poses) == 0:
+#             print(f"[WARN] No poses found in {poses_path}. Falling back to debug values.")
+#             poses = None
+#         else:
+#             print(f"[INFO] Loaded {len(poses)} poses from {poses_path}")
+#     except Exception as e:
+#         print(f"[ERROR] Failed to load poses from {poses_path}: {e}")
+#         poses = None
 
-    # Print joint information
-    get_joint_info(scene)
-    print_joint_limits_info(scene)
-    compare_joint_orders()
+#     # Print joint information
+#     get_joint_info(scene)
+#     print_joint_limits_info(scene)
+#     compare_joint_orders()
 
-    # Apply initial pose or fallback
-    if poses is not None:
-        apply_pose(scene, poses[0])
-        current_pose_idx = 0
-    else:
-        apply_debug_joint_values(scene)
-        current_pose_idx = -1
+#     # Apply initial pose or fallback
+#     if poses is not None:
+#         apply_pose(scene, poses[0])
+#         current_pose_idx = 0
+#     else:
+#         apply_debug_joint_values(scene)
+#         current_pose_idx = -1
     
-    # Set up keyboard input handling
-    input_interface = carb.input.acquire_input_interface()
-    keyboard = omni.appwindow.get_default_app_window().get_keyboard()
+#     # Set up keyboard input handling
+#     input_interface = carb.input.acquire_input_interface()
+#     keyboard = omni.appwindow.get_default_app_window().get_keyboard()
     
-    keys_pressed = {
-        "R": False,
-        "D": False,
-        "I": False,
-        "N": False,
-        "P": False,
-        "ESCAPE": False,
-    }
+#     keys_pressed = {
+#         "R": False,
+#         "D": False,
+#         "I": False,
+#         "N": False,
+#         "P": False,
+#         "ESCAPE": False,
+#     }
     
-    def on_keyboard_event(event):
-        nonlocal current_pose_idx
-        if event.type == carb.input.KeyboardEventType.KEY_PRESS:
-            if event.input.name == "R" and not keys_pressed["R"]:
-                keys_pressed["R"] = True
-                print("\n[DEBUG] Resetting to default pose...")
-                # Reset to default robot state
-                root_robot_state = scene["Robot"].data.default_root_state.clone()
-                root_robot_state[:, :3] += scene.env_origins
-                scene["Robot"].write_root_pose_to_sim(root_robot_state[:, :7])
-                scene["Robot"].write_root_velocity_to_sim(root_robot_state[:, 7:])
+#     def on_keyboard_event(event):
+#         nonlocal current_pose_idx
+#         if event.type == carb.input.KeyboardEventType.KEY_PRESS:
+#             if event.input.name == "R" and not keys_pressed["R"]:
+#                 keys_pressed["R"] = True
+#                 print("\n[DEBUG] Resetting to default pose...")
+#                 # Reset to default robot state
+#                 root_robot_state = scene["Robot"].data.default_root_state.clone()
+#                 root_robot_state[:, :3] += scene.env_origins
+#                 scene["Robot"].write_root_pose_to_sim(root_robot_state[:, :7])
+#                 scene["Robot"].write_root_velocity_to_sim(root_robot_state[:, 7:])
                 
-                joint_pos = scene["Robot"].data.default_joint_pos.clone()
-                joint_vel = scene["Robot"].data.default_joint_vel.clone()
-                scene["Robot"].write_joint_state_to_sim(joint_pos, joint_vel)
-                scene.write_data_to_sim()
-                # Report orientation penalty after reset
-                base_quat = scene["Robot"].data.root_quat_w[0]
-                penalty, g_b = _laying_down_orientation_l2_from_quat(base_quat, scene["Robot"].device)
-                print(f"[DEBUG] Orientation penalty after reset: {float(penalty):.6f}")
-                print(f"        projected_gravity_b: [{float(g_b[0]):.4f}, {float(g_b[1]):.4f}, {float(g_b[2]):.4f}]")
-                align_reward = _axis_alignment_reward_from_projected_gravity(g_b, scene["Robot"].device, axis=BELLY_TARGET_AXIS, sign=BELLY_TARGET_SIGN)
-                print(f"        axis_alignment_reward: {float(align_reward):.6f}")
+#                 joint_pos = scene["Robot"].data.default_joint_pos.clone()
+#                 joint_vel = scene["Robot"].data.default_joint_vel.clone()
+#                 scene["Robot"].write_joint_state_to_sim(joint_pos, joint_vel)
+#                 scene.write_data_to_sim()
+#                 # Report orientation penalty after reset
+#                 base_quat = scene["Robot"].data.root_quat_w[0]
+#                 penalty, g_b = _laying_down_orientation_l2_from_quat(base_quat, scene["Robot"].device)
+#                 print(f"[DEBUG] Orientation penalty after reset: {float(penalty):.6f}")
+#                 print(f"        projected_gravity_b: [{float(g_b[0]):.4f}, {float(g_b[1]):.4f}, {float(g_b[2]):.4f}]")
+#                 align_reward = _axis_alignment_reward_from_projected_gravity(g_b, scene["Robot"].device, axis=BELLY_TARGET_AXIS, sign=BELLY_TARGET_SIGN)
+#                 print(f"        axis_alignment_reward: {float(align_reward):.6f}")
                 
-            elif event.input.name == "D" and not keys_pressed["D"]:
-                keys_pressed["D"] = True
-                print("\n[DEBUG] Applying debug joint values...")
-                apply_debug_joint_values(scene)
+#             elif event.input.name == "D" and not keys_pressed["D"]:
+#                 keys_pressed["D"] = True
+#                 print("\n[DEBUG] Applying debug joint values...")
+#                 apply_debug_joint_values(scene)
                 
-            elif event.input.name == "I" and not keys_pressed["I"]:
-                keys_pressed["I"] = True
-                print("\n[DEBUG] Printing joint info...")
-                get_joint_info(scene)
-                print_joint_limits_info(scene)
-            elif event.input.name == "N" and not keys_pressed["N"]:
-                keys_pressed["N"] = True
-                if poses is not None and len(poses) > 0:
-                    current_pose_idx = (current_pose_idx + 1) % len(poses)
-                    apply_pose(scene, poses[current_pose_idx])
-                    print(f"[POSE] Applied next pose {current_pose_idx+1}/{len(poses)}")
-                else:
-                    print("[WARN] No poses loaded; cannot switch to next pose.")
-            elif event.input.name == "P" and not keys_pressed["P"]:
-                keys_pressed["P"] = True
-                if poses is not None and len(poses) > 0:
-                    current_pose_idx = (current_pose_idx - 1) % len(poses)
-                    apply_pose(scene, poses[current_pose_idx])
-                    print(f"[POSE] Applied previous pose {current_pose_idx+1}/{len(poses)}")
-                else:
-                    print("[WARN] No poses loaded; cannot switch to previous pose.")
+#             elif event.input.name == "I" and not keys_pressed["I"]:
+#                 keys_pressed["I"] = True
+#                 print("\n[DEBUG] Printing joint info...")
+#                 get_joint_info(scene)
+#                 print_joint_limits_info(scene)
+#             elif event.input.name == "N" and not keys_pressed["N"]:
+#                 keys_pressed["N"] = True
+#                 if poses is not None and len(poses) > 0:
+#                     current_pose_idx = (current_pose_idx + 1) % len(poses)
+#                     apply_pose(scene, poses[current_pose_idx])
+#                     print(f"[POSE] Applied next pose {current_pose_idx+1}/{len(poses)}")
+#                 else:
+#                     print("[WARN] No poses loaded; cannot switch to next pose.")
+#             elif event.input.name == "P" and not keys_pressed["P"]:
+#                 keys_pressed["P"] = True
+#                 if poses is not None and len(poses) > 0:
+#                     current_pose_idx = (current_pose_idx - 1) % len(poses)
+#                     apply_pose(scene, poses[current_pose_idx])
+#                     print(f"[POSE] Applied previous pose {current_pose_idx+1}/{len(poses)}")
+#                 else:
+#                     print("[WARN] No poses loaded; cannot switch to previous pose.")
                 
-            elif event.input.name == "ESCAPE" and not keys_pressed["ESCAPE"]:
-                keys_pressed["ESCAPE"] = True
+#             elif event.input.name == "ESCAPE" and not keys_pressed["ESCAPE"]:
+#                 keys_pressed["ESCAPE"] = True
                 
-        elif event.type == carb.input.KeyboardEventType.KEY_RELEASE:
-            if event.input.name in keys_pressed:
-                keys_pressed[event.input.name] = False
+#         elif event.type == carb.input.KeyboardEventType.KEY_RELEASE:
+#             if event.input.name in keys_pressed:
+#                 keys_pressed[event.input.name] = False
     
-    # Subscribe to keyboard events
-    keyboard_subscription = input_interface.subscribe_to_keyboard_events(keyboard, on_keyboard_event)
+#     # Subscribe to keyboard events
+#     keyboard_subscription = input_interface.subscribe_to_keyboard_events(keyboard, on_keyboard_event)
     
-    print(f"\n" + "=" * 80)
-    print("G1 JOINT DEBUG VISUALIZATION")
-    print("=" * 80)
-    print("Controls:")
-    print("  R - Reset to default pose")
-    print("  D - Apply debug joint values from screenshot")
-    print("  I - Print joint and limits information")
-    print("  N - Next pose from poses.json")
-    print("  P - Previous pose from poses.json")
-    print("  ESC - Exit")
-    print("=" * 80)
+#     print(f"\n" + "=" * 80)
+#     print("G1 JOINT DEBUG VISUALIZATION")
+#     print("=" * 80)
+#     print("Controls:")
+#     print("  R - Reset to default pose")
+#     print("  D - Apply debug joint values from screenshot")
+#     print("  I - Print joint and limits information")
+#     print("  N - Next pose from poses.json")
+#     print("  P - Previous pose from poses.json")
+#     print("  ESC - Exit")
+#     print("=" * 80)
     
-    sim_dt = sim.get_physics_dt()
+#     sim_dt = sim.get_physics_dt()
     
-    try:
-        while simulation_app.is_running():
-            if keys_pressed["ESCAPE"]:
-                print("Exiting debug visualization...")
-                break
+#     try:
+#         while simulation_app.is_running():
+#             if keys_pressed["ESCAPE"]:
+#                 print("Exiting debug visualization...")
+#                 break
                 
-            sim.step()
-            scene.update(sim_dt)
+#             sim.step()
+#             scene.update(sim_dt)
     
-    finally:
-        # Clean up keyboard subscription
-        if keyboard_subscription:
-            input_interface.unsubscribe_to_keyboard_events(keyboard, keyboard_subscription)
+#     finally:
+#         # Clean up keyboard subscription
+#         if keyboard_subscription:
+#             input_interface.unsubscribe_to_keyboard_events(keyboard, keyboard_subscription)
 
 
 def main():
@@ -599,4 +599,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    simulation_app.close() 
+    # simulation_app.close() 

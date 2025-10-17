@@ -1,12 +1,12 @@
 import mujoco
 import mujoco.viewer
 import numpy as np
-from utils import default_angles_config
-
+# from utils import default_angles_config
+from deploy_mujoco import default_angles_config
 
 def load_model():
     # Path to your H1 MJCF
-    model = mujoco.MjModel.from_xml_path("./h1_description/mjcf/scene.xml")
+    model = mujoco.MjModel.from_xml_path("./assets/h1_description/mjcf/scene.xml")
 
     # ======= Basic physics setup =======
     model.opt.timestep = 0.001            # small, stable integration step
@@ -40,6 +40,17 @@ def load_model():
     print(f"Initial gravity: {model.opt.gravity}")
     print(f"Initial base qpos: {data.qpos[:7]}")
 
+    print("Joints (index -> name):")
+    for i in range(model.njnt):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, i)
+        print(f"  {i}: {name}")
+
+    print("Actuators (index -> name):")
+    for i in range(model.nu):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+        print(f"  {i}: {name}")
+
+
     return model, data
 
 
@@ -54,7 +65,7 @@ def main():
             # Optionally freeze control for debugging
             data.ctrl[:] = default_angles_config.copy()
             # print(data.qpos)
-            print(f"Base linvel = {data.qvel[3:6]}, Base angvel = {data.qvel[0:3]}")
+            # print(f"Base linvel = {data.qvel[3:6]}, Base angvel = {data.qvel[0:3]}")
 
             # Sync viewer
             v.sync()
