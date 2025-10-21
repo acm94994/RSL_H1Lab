@@ -127,7 +127,7 @@ def remap_mujoco_to_pytorch(mujoco_data: np.ndarray) -> np.ndarray:
 
 
 
-POLICY_PATH = "assets/policy.pt"
+POLICY_PATH = "assets/h1_policy.pt"
 
 
 class TorchController:
@@ -206,7 +206,7 @@ class TorchController:
                 joint_pos_pytorch, #23
                 joint_vel_pytorch, #23
                 last_action_pytorch, #23
-                height_scan, #187
+                # height_scan, #187
         ])
 
         # assert obs.shape == (256,)
@@ -241,9 +241,32 @@ class TorchController:
 
             self._last_action = mujoco_pred.copy()  # Store in MuJoCo order
             
-            # print(mujoco_pred * self._action_scale + self._default_angles)
+            desired_pos = (mujoco_pred * self._action_scale + self._default_angles)
 
-            data.ctrl[:] = mujoco_pred * self._action_scale + self._default_angles
+            nj = desired_pos.shape[0]
+            qpos_joints = np.array(data.qpos[7:7+nj], dtype=np.float32)
+            qvel_joints = np.array(data.qvel[6:6+nj], dtype=np.float32)
+
+            # PD gains
+            kp = 20.0
+            kd = 4.0
+
+            # PD torque (desired vel assumed zero)
+            torques = kp * (desired_pos - qpos_joints) + kd * (0.0 - qvel_joints)
+
+            # Clip torques to actuator control range if available
+            
+            ctrl_min = model.actuator_ctrlrange[:nj, 0]
+            ctrl_max = model.actuator_ctrlrange[:nj, 1]
+            torques = np.clip(torques, ctrl_min, ctrl_max)
+        
+
+            # Write torques into data.ctrl — ensure sizes match
+            # print(f"Applying torques: {torques.shape}")
+            data.ctrl[:] = torques
+
+
+            # data.ctrl[:] = mujoco_pred * self._action_scale + self._default_angles
 
 
 
@@ -256,8 +279,8 @@ def load_model():
     # model.opt.gravity[:] = [0, 0, -9.81]  # normal Earth gravity
     # model.opt.gravity[:] = [0, 0, 0]  # zero gravity for testing
 
-    model.opt.iterations = 50
-    model.opt.integrator = mujoco.mjtIntegrator.mjINT_EULER  # Euler or RK4
+    model.opt.iterations = 10
+    model.opt.integrator = mujoco.mjtIntegrator.mjINT_RK4  # Euler or RK4
     
     # Add damping to prevent jitter / free base blowup
     # model.dof_damping[:] = 0.2
@@ -270,7 +293,7 @@ def load_model():
 
     # ======= Ensure valid base pose =======
     # qpos[:3] = base position (x, y, z)
-    data.qpos[:3] = np.array([0, 0, 1.04])   # start 1m above ground
+    data.qpos[:3] = np.array([0, 0, 1.05])   # start 1m above ground
     # qpos[3:7] = base quaternion (w, x, y, z)
     data.qpos[3:7] = np.array([1, 0, 0, 0]) # identity orientation
     # data.qpos[3:7] = np.array([0.7071, 0, 0, -0.7071]) # 90 deg rotation around z-axis
@@ -281,7 +304,7 @@ def load_model():
 
     # print(default_angles_config.copy())
 
-    data.ctrl[:] = default_angles_config.copy()
+    # data.ctrl[:] = default_angles_config.copy()
     print(data.qpos)
     print(f"Model loaded: {model.nq} qpos, {model.nv} qvel, {model.nu} actuators")
     print(f"Initial gravity: {model.opt.gravity}")
@@ -300,9 +323,9 @@ def loaded():
         default_angles=np.array(default_angles_config),
         n_substeps=1,
         action_scale=0.5,
-        vel_scale_x=1.0,
-        vel_scale_y=1.0,
-        vel_scale_rot=1.0,
+        vel_scale_x=0.5,
+        vel_scale_y=0.5,
+        vel_scale_rot=0.5,
     )
 
     # with mujoco.viewer.launch_passive(model, data) as v:

@@ -11,9 +11,9 @@ class KeyboardController:
 
     def __init__(
         self,
-        vel_scale_x=0.4,
-        vel_scale_y=0.4,
-        vel_scale_rot=1.0,
+        vel_scale_x=0.5,
+        vel_scale_y=0.5,
+        vel_scale_rot=0.5,
     ):
         self._vel_scale_x = vel_scale_x
         self._vel_scale_y = vel_scale_y
