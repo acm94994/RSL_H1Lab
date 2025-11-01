@@ -12,7 +12,7 @@ from .augmentation_cfg import *
 
 
 symmetry_cfg = RslRlSymmetryCfg(
-    use_data_augmentation=True,
+    use_data_augmentation=False,
     use_mirror_loss=True,
     data_augmentation_func=data_augmentation_func_h1,
     mirror_loss_coeff=0.25
@@ -46,7 +46,7 @@ class H1RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
-        # symmetry_cfg=symmetry_cfg,
+        symmetry_cfg=symmetry_cfg,
     )
 
 
@@ -59,3 +59,7 @@ class H1FlatPPORunnerCfg(H1RoughPPORunnerCfg):
         self.experiment_name = "h1_flat"
         self.policy.actor_hidden_dims = [128, 128, 128]
         self.policy.critic_hidden_dims = [128, 128, 128]
+        self.obs_groups = {
+            "policy" : ["policy"],
+            "critic" : ["policy"],
+        }

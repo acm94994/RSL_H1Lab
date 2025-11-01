@@ -209,7 +209,6 @@ class TorchController:
                 # height_scan, #187
         ])
 
-        # assert obs.shape == (256,)
         return obs.astype(np.float32)
     
     def get_control(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
@@ -248,18 +247,28 @@ class TorchController:
             qvel_joints = np.array(data.qvel[6:6+nj], dtype=np.float32)
 
             # PD gains
-            kp = 20.0
-            kd = 4.0
+            kp = np.array([
+                150.0, 150.0, 200.0, 200.0, 20.0,
+                150.0, 150.0, 200.0, 200.0, 20.0,
+                200.0,
+                40.0, 40.0, 40.0, 40.0,
+                40.0, 40.0, 40.0, 40.0
+            ], dtype=np.float32)
+            kd = np.array([
+                5.0, 5.0, 5.0, 5.0, 4.0,
+                5.0, 5.0, 5.0, 5.0, 4.0,
+                5.0,
+                10.0, 10.0, 10.0, 10.0,
+                10.0, 10.0, 10.0, 10.0
+            ], dtype=np.float32)
 
             # PD torque (desired vel assumed zero)
             torques = kp * (desired_pos - qpos_joints) + kd * (0.0 - qvel_joints)
 
             # Clip torques to actuator control range if available
-            
             ctrl_min = model.actuator_ctrlrange[:nj, 0]
             ctrl_max = model.actuator_ctrlrange[:nj, 1]
             torques = np.clip(torques, ctrl_min, ctrl_max)
-        
 
             # Write torques into data.ctrl — ensure sizes match
             # print(f"Applying torques: {torques.shape}")
@@ -275,12 +284,12 @@ def load_model():
     model = mujoco.MjModel.from_xml_path("./assets/h1_description/mjcf/scene.xml")
 
     # ======= Basic physics setup =======
-    model.opt.timestep = 0.005            # small, stable integration step
+    model.opt.timestep = 0.001            # small, stable integration step
     # model.opt.gravity[:] = [0, 0, -9.81]  # normal Earth gravity
     # model.opt.gravity[:] = [0, 0, 0]  # zero gravity for testing
 
-    model.opt.iterations = 10
-    model.opt.integrator = mujoco.mjtIntegrator.mjINT_RK4  # Euler or RK4
+    model.opt.iterations = 1
+    model.opt.integrator = mujoco.mjtIntegrator.mjINT_EULER  # Euler or RK4
     
     # Add damping to prevent jitter / free base blowup
     # model.dof_damping[:] = 0.2
@@ -321,11 +330,11 @@ def loaded():
     policy = TorchController(
         policy_path=POLICY_PATH,
         default_angles=np.array(default_angles_config),
-        n_substeps=1,
+        n_substeps=4,
         action_scale=0.5,
-        vel_scale_x=0.5,
-        vel_scale_y=0.5,
-        vel_scale_rot=0.5,
+        vel_scale_x=1.0,
+        vel_scale_y=1.0,
+        vel_scale_rot=1.0,
     )
 
     # with mujoco.viewer.launch_passive(model, data) as v:
