@@ -255,6 +255,7 @@ import os
 import time
 import torch
 import shutil
+import re
 
 from rsl_rl.runners import DistillationRunner, OnPolicyRunner
 
@@ -346,6 +347,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     else:
         raise ValueError(f"Unsupported runner class: {agent_cfg.class_name}")
     runner.load(resume_path)
+    match = re.search(r'model_(\d+)\.pt$', resume_path)
+    if match:
+        iteration = int(match.group(1))
+    num_iterations_trained = iteration
 
     # obtain the trained policy for inference
     policy = runner.get_inference_policy(device=env.unwrapped.device)
@@ -370,8 +375,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
     print(normalizer, "The normalizer value is")
-    export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename=f"{args_cli.task}_policy.pt")
-    export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename=f"{args_cli.task}_policy.onnx")
+    export_policy_as_jit(policy_nn, normalizer=normalizer, path=export_model_dir, filename=f"{args_cli.task}_policy_{num_iterations_trained}_iterations.pt")
+    export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename=f"{args_cli.task}_policy_{num_iterations_trained}_iterations.onnx")
 
     dt = env.unwrapped.step_dt
 

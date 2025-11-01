@@ -15,7 +15,7 @@ symmetry_cfg = RslRlSymmetryCfg(
     use_data_augmentation=False,
     use_mirror_loss=True,
     data_augmentation_func=data_augmentation_func_h1,
-    mirror_loss_coeff=0.25
+    mirror_loss_coeff=0.5
 )
 
 
