@@ -95,7 +95,7 @@ This package was partially created using the template package creation tool in I
 - A sample policy policy.pt has been provided to test. If you want to deploy your custom policy, follow the instructions below, deleting the .pt files.
 - Copy your policy to the deployment folder. 
     ```bash
-    cp logs/<your-log-spanning-multiple-directories>/exported/<task>_policy.pt data
+    cp logs/<your-log-spanning-multiple-directories>/exported/<task>_policy_<number_iterations>.pt assets
     # <task> used here is IsaacH1RoughPlayRSL. Other task names available above.
     ```
 
