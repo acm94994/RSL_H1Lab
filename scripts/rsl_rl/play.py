@@ -150,10 +150,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     else:
         raise ValueError(f"Unsupported runner class: {agent_cfg.class_name}")
     runner.load(resume_path)
+
+    # extract iteration number from resume_path
     match = re.search(r'model_(\d+)\.pt$', resume_path)
     if match:
-        iteration = int(match.group(1))
-    num_iterations_trained = iteration
+        num_iterations_trained = int(match.group(1))
 
     # obtain the trained policy for inference
     policy = runner.get_inference_policy(device=env.unwrapped.device)

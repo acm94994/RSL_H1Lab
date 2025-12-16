@@ -127,7 +127,7 @@ def remap_mujoco_to_pytorch(mujoco_data: np.ndarray) -> np.ndarray:
 
 
 
-POLICY_PATH = "assets/h1_policy.pt"
+POLICY_PATH = "assets/IsaacH1FlatPlayRSL_policy_999_iterations.pt"
 
 
 class TorchController:
@@ -253,14 +253,14 @@ class TorchController:
                 200.0,
                 40.0, 40.0, 40.0, 40.0,
                 40.0, 40.0, 40.0, 40.0
-            ], dtype=np.float32)
+            ], dtype=np.float32)/4
             kd = np.array([
                 5.0, 5.0, 5.0, 5.0, 4.0,
                 5.0, 5.0, 5.0, 5.0, 4.0,
                 5.0,
                 10.0, 10.0, 10.0, 10.0,
                 10.0, 10.0, 10.0, 10.0
-            ], dtype=np.float32)
+            ], dtype=np.float32)/4
 
             # PD torque (desired vel assumed zero)
             torques = kp * (desired_pos - qpos_joints) + kd * (0.0 - qvel_joints)
@@ -284,7 +284,7 @@ def load_model():
     model = mujoco.MjModel.from_xml_path("./assets/h1_description/mjcf/scene.xml")
 
     # ======= Basic physics setup =======
-    model.opt.timestep = 0.001            # small, stable integration step
+    model.opt.timestep = 0.0001            # small, stable integration step
     # model.opt.gravity[:] = [0, 0, -9.81]  # normal Earth gravity
     # model.opt.gravity[:] = [0, 0, 0]  # zero gravity for testing
 
@@ -331,10 +331,10 @@ def loaded():
         policy_path=POLICY_PATH,
         default_angles=np.array(default_angles_config),
         n_substeps=4,
-        action_scale=0.5,
+        action_scale=0.3,
         vel_scale_x=1.0,
-        vel_scale_y=1.0,
-        vel_scale_rot=1.0,
+        vel_scale_y=0.5,
+        vel_scale_rot=0.5,
     )
 
     # with mujoco.viewer.launch_passive(model, data) as v:

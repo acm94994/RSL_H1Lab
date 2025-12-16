@@ -3,17 +3,171 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
 
 import RSL_H1Lab.tasks.manager_based.rsl_h1lab.mdp as mdp
-from RSL_H1Lab.tasks.manager_based.rsl_h1lab.env_cfg.velocity_env_cfg import LocomotionVelocityRoughEnvCfg, RewardsCfg
+from RSL_H1Lab.tasks.manager_based.rsl_h1lab.env_cfg.velocity_env_cfg import (
+    EventCfg,
+    LocomotionVelocityRoughEnvCfg,
+    RewardsCfg,
+)
 
 ##
 # Pre-defined configs
 ##
 from isaaclab_assets import H1_MINIMAL_CFG  # isort: skip
+
+
+##
+# Domain Randomization Configuration
+# Based on: https://lilianweng.github.io/posts/2019-05-05-domain-randomization/
+#
+# Key randomization parameters for sim2real transfer:
+# 1. Mass and dimensions of robot bodies
+# 2. Damping, friction of the joints
+# 3. Gains for the PD controller (stiffness/damping)
+# 4. Center of mass variations
+# 5. Ground friction properties
+# 6. External disturbances (forces/torques)
+# 7. Observation noise (sensor noise)
+##
+
+
+@configclass
+class H1DomainRandomizationCfg(EventCfg):
+    """Domain randomization configuration for sim2real transfer.
+    
+    This implements uniform domain randomization as described in:
+    - Peng et al. 2018: "Sim-to-real transfer of robotic control with dynamics randomization"
+    - OpenAI 2018: "Learning Dexterous In-Hand Manipulation"
+    """
+
+    # === STARTUP RANDOMIZATION (applied once at environment creation) ===
+    
+    # Randomize ground/contact friction properties
+    # This helps the policy generalize to different floor surfaces
+    physics_material = EventTerm(
+        func=mdp.randomize_rigid_body_material,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "static_friction_range": (0.6, 1.2),   # Vary friction ±40%
+            "dynamic_friction_range": (0.4, 1.0),  # Vary friction ±50%
+            "restitution_range": (0.0, 0.1),       # Slight bounce variation
+            "num_buckets": 64,
+        },
+    )
+
+    # Randomize base/torso mass (simulates payload variations)
+    add_base_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*torso_link"),
+            "mass_distribution_params": (-3.0, 5.0),  # Add -3kg to +5kg
+            "operation": "add",
+        },
+    )
+
+    # Randomize limb masses (manufacturing tolerances, wear)
+    add_limb_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=[".*hip_.*", ".*knee_.*", ".*ankle_.*"]),
+            "mass_distribution_params": (0.8, 1.2),  # Scale mass ±20%
+            "operation": "scale",
+        },
+    )
+
+    # Randomize center of mass position (load distribution variations)
+    base_com = EventTerm(
+        func=mdp.randomize_rigid_body_com,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*torso_link"),
+            "com_range": {"x": (-0.08, 0.08), "y": (-0.05, 0.05), "z": (-0.03, 0.03)},
+        },
+    )
+
+    # Randomize actuator PD gains (motor response variations)
+    # Critical for sim2real: real motors have different response characteristics
+    actuator_gains = EventTerm(
+        func=mdp.randomize_actuator_gains,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "stiffness_distribution_params": (0.8, 1.2),  # Scale Kp ±20%
+            "damping_distribution_params": (0.8, 1.2),    # Scale Kd ±20%
+            "operation": "scale",
+            "distribution": "uniform",
+        },
+    )
+
+    # Randomize joint friction (mechanical wear, lubrication)
+    joint_friction = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "friction_distribution_params": (0.5, 2.0),  # Scale friction 0.5x to 2x
+            "operation": "scale",
+            "distribution": "uniform",
+        },
+    )
+
+    # === RESET RANDOMIZATION (applied at each episode reset) ===
+
+    # External force/torque disturbances (wind, collisions, perturbations)
+    base_external_force_torque = EventTerm(
+        func=mdp.apply_external_force_torque,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*torso_link"),
+            "force_range": (-10.0, 10.0),   # Random forces up to 10N
+            "torque_range": (-5.0, 5.0),    # Random torques up to 5Nm
+        },
+    )
+
+    # Reset base pose with randomization
+    reset_base = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+            "velocity_range": {
+                "x": (-0.3, 0.3),
+                "y": (-0.3, 0.3),
+                "z": (-0.1, 0.1),
+                "roll": (-0.2, 0.2),
+                "pitch": (-0.2, 0.2),
+                "yaw": (-0.3, 0.3),
+            },
+        },
+    )
+
+    # Reset joint positions with randomization
+    reset_robot_joints = EventTerm(
+        func=mdp.reset_joints_by_scale,
+        mode="reset",
+        params={
+            "position_range": (0.8, 1.2),  # ±20% of default position
+            "velocity_range": (-0.1, 0.1),  # Small initial velocities
+        },
+    )
+
+    # === INTERVAL RANDOMIZATION (applied periodically during episode) ===
+
+    # Random pushes to test balance recovery
+    push_robot = EventTerm(
+        func=mdp.push_by_setting_velocity,
+        mode="interval",
+        interval_range_s=(5.0, 15.0),  # Push every 5-15 seconds
+        params={"velocity_range": {"x": (-1.5, 1.5), "y": (-1.5, 1.5)}},
+    )
 
 
 @configclass
@@ -70,6 +224,7 @@ class H1Rewards(RewardsCfg):
 @configclass
 class H1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: H1Rewards = H1Rewards()
+    events: H1DomainRandomizationCfg = H1DomainRandomizationCfg()
 
     def __post_init__(self):
         # post init of parent
@@ -79,27 +234,18 @@ class H1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         if self.scene.height_scanner:
             self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
 
-        # Randomization
-        # self.events.push_robot = None
-        self.events.add_base_mass = None
-        self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
-        # self.events.base_external_force_torque.params["asset_cfg"].body_names = [".*torso_link", ".*elbow_link"]
-        self.events.base_external_force_torque.params["asset_cfg"].body_names = [".*torso_link"]
-        # self.events.base_external_force_torque.params["force_range"] = (-15.0, -5.0)
-        # self.events.push_robot.params["velocity_range"] = {"x": (-1.5, 1.5), "y": (-1.5, 1.5)}
-        # self.events.push_robot.interval_range_s = (10.0, 20.0)
-        self.events.reset_base.params = {
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-            "velocity_range": {
-                "x": (0.0, 0.0),
-                "y": (0.0, 0.0),
-                "z": (0.0, 0.0),
-                "roll": (0.0, 0.0),
-                "pitch": (0.0, 0.0),
-                "yaw": (0.0, 0.0),
-            },
-        }
-        self.events.base_com = None
+        # Domain Randomization is now handled by H1DomainRandomizationCfg
+        # The following overrides can be used to tune specific randomization parameters:
+        
+        # Adjust joint reset range (1.0 = no randomization)
+        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
+        
+        # Adjust external force disturbances
+        self.events.base_external_force_torque.params["force_range"] = (-5.0, 5.0)
+        
+        # Adjust push robot velocity (for balance recovery training)
+        self.events.push_robot.params["velocity_range"] = {"x": (-0.8, 0.8), "y": (-0.8, 0.8)}
+        self.events.push_robot.interval_range_s = (10.0, 20.0)
 
         # Rewards
         self.rewards.undesired_contacts = None

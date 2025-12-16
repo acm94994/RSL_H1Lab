@@ -57,6 +57,7 @@ class KeyboardController:
         # Simple interpolation or direct assignment could be used here.
         # Let's use direct assignment for simplicity now.
         self.vx = target_vx
+        # print(self.vx)
         self.vy = target_vy
         self.wz = target_wz
 
@@ -98,7 +99,9 @@ class KeyboardController:
 
 
     def get_command(self):
-        return np.array([self.vx, self.vy, self.wz])
+        command = np.array([self.vx, self.vy, self.wz])
+        print(f"Current command: {command}")
+        return command
 
     def stop(self):
         print("Stopping keyboard controller...")
