@@ -121,6 +121,15 @@ This package was partially created using the template package creation tool in I
     python deployment/walk.py --action_scale 0.5 --vel_scale_x 0.5 --vel_scale_rot 1.0 --n_substeps 4
     ```
 
+    **Available arguments:**
+    - `--policy_path`: Path to the PyTorch policy model (default: `assets/IsaacH1FlatPlayRSL_policy_5499_iterations.pt`)
+    - `--n_substeps`: Number of simulation substeps per control step. Policy runs every n_substeps (default: 4). Should match training decimation factor.
+    - `--action_scale`: Scaling factor for policy actions (default: 0.5)
+    - `--vel_scale_x`: Forward/backward velocity command scale in m/s (default: 0.5)
+    - `--vel_scale_y`: Lateral velocity command scale in m/s (default: 0.5)
+    - `--vel_scale_rot`: Rotational velocity command scale in rad/s (default: 1.0)
+    - `--no-keyboard`: Disable keyboard control and use automated command sequence instead
+
 - To verify the PyTorch joint indexes, run the following commands.
     ```bash
     # if you are in the deployment directory
