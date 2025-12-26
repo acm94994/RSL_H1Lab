@@ -1,3 +1,4 @@
+import argparse
 import mujoco
 import mujoco.viewer as viewer
 import numpy as np
@@ -127,7 +128,7 @@ def remap_mujoco_to_pytorch(mujoco_data: np.ndarray) -> np.ndarray:
 
 
 
-POLICY_PATH = "assets/IsaacH1FlatPlayRSL_policy_999_iterations.pt"
+POLICY_PATH = "assets/IsaacH1FlatPlayRSL_policy_5499_iterations.pt"
 
 
 class TorchController:
@@ -177,7 +178,17 @@ class TorchController:
         # print(imu_xmat)
         # print(world_gravity, projected_gravity)
         # print(projected_gravity.shape) # (3,)
-        velocity_commands = self._controller.get_command()  # (3,)
+        
+        # Get velocity commands and transform to robot's body frame
+        # The policy was trained with commands in the yaw frame (robot's local coordinates)
+        
+        # Get robot's yaw angle from quaternion
+        quat = data.qpos[3:7]  # [w, x, y, z]
+        yaw = np.arctan2(2.0 * (quat[0] * quat[3] + quat[1] * quat[2]),
+                        1.0 - 2.0 * (quat[2]**2 + quat[3]**2))
+        
+        # Pass yaw to controller so it can transform commands in body frame BEFORE smoothing
+        velocity_commands = self._controller.get_command(yaw)  # Already in body frame
 
         joint_pos_mujoco = data.qpos[7:]  - self._default_angles# Exclude global position and yaw (23,)
         joint_vel_mujoco = data.qvel[6:]  # Exclude global vel (23,)
@@ -284,7 +295,7 @@ def load_model():
     model = mujoco.MjModel.from_xml_path("./assets/h1_description/mjcf/scene.xml")
 
     # ======= Basic physics setup =======
-    model.opt.timestep = 0.0001            # small, stable integration step
+    model.opt.timestep = 0.0005            # small, stable integration step
     # model.opt.gravity[:] = [0, 0, -9.81]  # normal Earth gravity
     # model.opt.gravity[:] = [0, 0, 0]  # zero gravity for testing
 
@@ -331,10 +342,10 @@ def loaded():
         policy_path=POLICY_PATH,
         default_angles=np.array(default_angles_config),
         n_substeps=4,
-        action_scale=0.3,
-        vel_scale_x=1.0,
+        action_scale=0.5,
+        vel_scale_x=0.5,
         vel_scale_y=0.5,
-        vel_scale_rot=0.5,
+        vel_scale_rot=1.0,
     )
 
     # with mujoco.viewer.launch_passive(model, data) as v:
@@ -354,4 +365,15 @@ def loaded():
     return model, data
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Deploy H1 policy with MuJoCo")
+    parser.add_argument(
+        "--policy-path",
+        type=str,
+        default="assets/IsaacH1FlatPlayRSL_policy_5499_iterations.pt",
+        help="Path to the policy checkpoint file"
+    )
+    args = parser.parse_args()
+    
+    # global POLICY_PATH
+    POLICY_PATH = args.policy_path
     viewer.launch(loader=loaded)

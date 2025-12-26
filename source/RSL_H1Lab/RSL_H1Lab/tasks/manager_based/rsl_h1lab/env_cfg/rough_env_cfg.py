@@ -54,9 +54,9 @@ class H1DomainRandomizationCfg(EventCfg):
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.6, 1.2),   # Vary friction ±40%
-            "dynamic_friction_range": (0.4, 1.0),  # Vary friction ±50%
-            "restitution_range": (0.0, 0.1),       # Slight bounce variation
+            "static_friction_range": (0.6, 1.5),   # Vary friction ±40%
+            "dynamic_friction_range": (0.4, 1.2),  # Vary friction ±50%
+            "restitution_range": (0.0, 0.125),       # Slight bounce variation
             "num_buckets": 64,
         },
     )
@@ -100,8 +100,8 @@ class H1DomainRandomizationCfg(EventCfg):
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "stiffness_distribution_params": (0.8, 1.2),  # Scale Kp ±20%
-            "damping_distribution_params": (0.8, 1.2),    # Scale Kd ±20%
+            "stiffness_distribution_params": (0.75, 1.25),  # Scale Kp ±25%
+            "damping_distribution_params": (0.75, 1.25),    # Scale Kd ±25%
             "operation": "scale",
             "distribution": "uniform",
         },
@@ -113,7 +113,7 @@ class H1DomainRandomizationCfg(EventCfg):
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "friction_distribution_params": (0.5, 2.0),  # Scale friction 0.5x to 2x
+            "friction_distribution_params": (0.4, 2.5),  # Scale friction 0.4x to 2.5x
             "operation": "scale",
             "distribution": "uniform",
         },
@@ -133,41 +133,41 @@ class H1DomainRandomizationCfg(EventCfg):
     )
 
     # Reset base pose with randomization
-    reset_base = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-            "velocity_range": {
-                "x": (-0.3, 0.3),
-                "y": (-0.3, 0.3),
-                "z": (-0.1, 0.1),
-                "roll": (-0.2, 0.2),
-                "pitch": (-0.2, 0.2),
-                "yaw": (-0.3, 0.3),
-            },
-        },
-    )
+    # reset_base = EventTerm(
+    #     func=mdp.reset_root_state_uniform,
+    #     mode="reset",
+    #     params={
+    #         "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+    #         "velocity_range": {
+    #             "x": (-0.3, 0.3),
+    #             "y": (-0.3, 0.3),
+    #             "z": (-0.1, 0.1),
+    #             "roll": (-0.2, 0.2),
+    #             "pitch": (-0.2, 0.2),
+    #             "yaw": (-0.3, 0.3),
+    #         },
+    #     },
+    # )
 
     # Reset joint positions with randomization
-    reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_scale,
-        mode="reset",
-        params={
-            "position_range": (0.8, 1.2),  # ±20% of default position
-            "velocity_range": (-0.1, 0.1),  # Small initial velocities
-        },
-    )
+    # reset_robot_joints = EventTerm(
+    #     func=mdp.reset_joints_by_scale,
+    #     mode="reset",
+    #     params={
+    #         "position_range": (0.8, 1.2),  # ±20% of default position
+    #         "velocity_range": (-0.12, 0.12),  # Small initial velocities
+    #     },
+    # )
 
     # === INTERVAL RANDOMIZATION (applied periodically during episode) ===
 
     # Random pushes to test balance recovery
-    push_robot = EventTerm(
-        func=mdp.push_by_setting_velocity,
-        mode="interval",
-        interval_range_s=(5.0, 15.0),  # Push every 5-15 seconds
-        params={"velocity_range": {"x": (-1.5, 1.5), "y": (-1.5, 1.5)}},
-    )
+    # push_robot = EventTerm(
+    #     func=mdp.push_by_setting_velocity,
+    #     mode="interval",
+    #     interval_range_s=(3.0, 15.0),  # Push every 3-15 seconds
+    #     params={"velocity_range": {"x": (-1.5, 1.5), "y": (-1.5, 1.5)}},
+    # )
 
 
 @configclass
@@ -238,14 +238,25 @@ class H1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # The following overrides can be used to tune specific randomization parameters:
         
         # Adjust joint reset range (1.0 = no randomization)
-        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
+        self.events.reset_robot_joints.params["position_range"] = (0.75, 1.25)  # ±25% of default position
+        self.events.reset_robot_joints.params["velocity_range"] = (-0.2, 0.2)  # Small initial velocities
+
+        self.events.reset_base.params["pose_range"] = {"x": (-0.3, 0.3), "y": (-0.3, 0.3), "yaw": (-3.14, 3.14)}
+        self.events.reset_base.params["velocity_range"] = {
+            "x": (-0.3, 0.3),
+            "y": (-0.3, 0.3),
+            "z": (-0.1, 0.1),
+            "roll": (-0.25, 0.25),
+            "pitch": (-0.25, 0.25),
+            "yaw": (-0.35, 0.35),
+        }
         
         # Adjust external force disturbances
-        self.events.base_external_force_torque.params["force_range"] = (-5.0, 5.0)
+        # self.events.base_external_force_torque.params["force_range"] = (-5.0, 5.0)
         
         # Adjust push robot velocity (for balance recovery training)
-        self.events.push_robot.params["velocity_range"] = {"x": (-0.8, 0.8), "y": (-0.8, 0.8)}
-        self.events.push_robot.interval_range_s = (10.0, 20.0)
+        self.events.push_robot.params["velocity_range"] = {"x": (-2.5, 2.5), "y": (-2.5, 2.5)}
+        self.events.push_robot.interval_range_s = (3.0, 20.0)
 
         # Rewards
         self.rewards.undesired_contacts = None

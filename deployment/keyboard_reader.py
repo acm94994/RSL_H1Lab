@@ -1,3 +1,18 @@
+# Copyright 2025 DeepMind Technologies Limited
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+#modified by Logan
 """Keyboard controller class using Tkinter for input capture."""
 
 import threading
@@ -11,17 +26,22 @@ class KeyboardController:
 
     def __init__(
         self,
-        vel_scale_x=0.5,
-        vel_scale_y=0.5,
-        vel_scale_rot=0.5,
+        vel_scale_x=0.4,
+        vel_scale_y=0.4,
+        vel_scale_rot=0.6,  # Reduced for better stability during turns
+        smoothing_factor=0.5,  # Command smoothing - higher = more responsive
     ):
         self._vel_scale_x = vel_scale_x
         self._vel_scale_y = vel_scale_y
         self._vel_scale_rot = vel_scale_rot
+        self._smoothing = smoothing_factor
 
         self.vx = 0.0
         self.vy = 0.0
         self.wz = 0.0
+        self._target_vx = 0.0
+        self._target_vy = 0.0
+        self._target_wz = 0.0
         self._keys_pressed = set()
         self.is_running = True
 
@@ -54,12 +74,23 @@ class KeyboardController:
         if 'e' in self._keys_pressed:
             target_wz = -self._vel_scale_rot # Rotate right
 
-        # Simple interpolation or direct assignment could be used here.
-        # Let's use direct assignment for simplicity now.
-        self.vx = target_vx
-        # print(self.vx)
-        self.vy = target_vy
-        self.wz = target_wz
+        # Apply exponential smoothing to prevent abrupt changes
+        # This helps stability when transitioning between rotation and translation
+        self._target_vx = target_vx
+        self._target_vy = target_vy
+        self._target_wz = target_wz
+        
+        self.vx = self.vx * (1 - self._smoothing) + self._target_vx * self._smoothing
+        self.vy = self.vy * (1 - self._smoothing) + self._target_vy * self._smoothing
+        self.wz = self.wz * (1 - self._smoothing) + self._target_wz * self._smoothing
+        
+        # Deadband to zero out very small values
+        if abs(self.vx) < 0.01:
+            self.vx = 0.0
+        if abs(self.vy) < 0.01:
+            self.vy = 0.0
+        if abs(self.wz) < 0.01:
+            self.wz = 0.0
 
 
     def _run_tkinter(self):
@@ -98,10 +129,28 @@ class KeyboardController:
             pass # Window already destroyed
 
 
-    def get_command(self):
-        command = np.array([self.vx, self.vy, self.wz])
-        print(f"Current command: {command}")
-        return command
+    def get_command(self, yaw=None):
+        """Get velocity command, optionally transformed to body frame.
+        
+        Args:
+            yaw: Robot's yaw angle in radians. If provided, transforms command
+                 from world frame to body frame.
+        
+        Returns:
+            np.array([vx, vy, wz]) in body frame if yaw provided, else world frame
+        """
+        if yaw is None:
+            # Return commands in world frame (legacy behavior)
+            return np.array([self.vx, self.vy, self.wz])
+        
+        # Transform velocity commands from world frame to body frame
+        # This ensures smoothing happens in the robot's local coordinates
+        cos_yaw = np.cos(yaw)
+        sin_yaw = np.sin(yaw)
+        vx_body = cos_yaw * self.vx + sin_yaw * self.vy
+        vy_body = -sin_yaw * self.vx + cos_yaw * self.vy
+        
+        return np.array([vx_body, vy_body, self.wz])
 
     def stop(self):
         print("Stopping keyboard controller...")

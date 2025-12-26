@@ -99,10 +99,26 @@ This package was partially created using the template package creation tool in I
     # <task> used here is IsaacH1RoughPlayRSL. Other task names available above.
     ```
 
-- Run deployment. Current issues are being faced in control of the H1 during deployment.
+- Run deployment with keyboard control:
 
     ```bash
     python deployment/deploy_mujoco.py
+    ```
+
+- Run deployment with `walk.py` for interactive keyboard control or automated command sequences:
+
+    ```bash
+    # Keyboard control (default - use W/A/S/D/Q/E keys)
+    python deployment/walk.py
+    
+    # Automated mode (1s wait, 5s forward, 1s wait, 3s rotate left, 1s wait, 3s rotate right, 1s wait, 3s forward)
+    python deployment/walk.py --no-keyboard
+    
+    # Custom policy path
+    python deployment/walk.py --policy_path assets/IsaacH1FlatPlayRSL_policy_7999_iterations.pt
+    
+    # Adjust control parameters
+    python deployment/walk.py --action_scale 0.5 --vel_scale_x 0.5 --vel_scale_rot 1.0 --n_substeps 4
     ```
 
 - To verify the PyTorch joint indexes, run the following commands.
