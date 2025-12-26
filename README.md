@@ -105,7 +105,7 @@ This package was partially created using the template package creation tool in I
     python deployment/deploy_mujoco.py
     ```
 
-- Run deployment with `walk.py` for interactive keyboard control or automated command sequences:
+- Run deployment with `walk.py` for interactive keyboard control or automated command sequences (user-defined within code):
 
     ```bash
     # Keyboard control (default - use W/A/S/D/Q/E keys)

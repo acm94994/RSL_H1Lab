@@ -208,19 +208,19 @@ class TorchController:
             elif elapsed < 7.0:
                 # Wait 1 second (6s to 7s)
                 pass
-            elif elapsed < 10.0:
+            elif elapsed < 8.5:
                 # Q for 3 seconds (7s to 10s) - rotate left
                 vyaw_world = self._vel_scale_x  # Positive yaw
-            elif elapsed < 11.0:
+            elif elapsed < 12.0:
                 # Wait 1 second (10s to 11s)
                 pass
-            elif elapsed < 14.0:
+            elif elapsed < 15.5:
                 # E for 3 seconds (11s to 14s) - rotate right
                 vyaw_world = -self._vel_scale_x  # Negative yaw
-            elif elapsed < 15.0:
+            elif elapsed < 18.0:
                 # Wait 1 second (14s to 15s)
                 pass
-            elif elapsed < 18.0:
+            elif elapsed < 22.0:
                 # W for 3 seconds (15s to 18s) - forward
                 vx_world = self._vel_scale_x
             
