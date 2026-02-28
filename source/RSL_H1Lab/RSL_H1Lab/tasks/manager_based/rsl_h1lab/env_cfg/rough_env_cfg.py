@@ -234,29 +234,39 @@ class H1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         if self.scene.height_scanner:
             self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
 
+        # === ABLATION: Disable domain randomization ===
+        # Comment/uncomment these lines to enable/disable specific randomizations
+        self.events.physics_material = None
+        self.events.add_base_mass = None
+        self.events.add_limb_mass = None
+        self.events.base_com = None
+        self.events.actuator_gains = None
+        self.events.joint_friction = None
+        self.events.base_external_force_torque = None
+
         # Domain Randomization is now handled by H1DomainRandomizationCfg
         # The following overrides can be used to tune specific randomization parameters:
         
         # Adjust joint reset range (1.0 = no randomization)
-        self.events.reset_robot_joints.params["position_range"] = (0.75, 1.25)  # ±25% of default position
-        self.events.reset_robot_joints.params["velocity_range"] = (-0.2, 0.2)  # Small initial velocities
+        # self.events.reset_robot_joints.params["position_range"] = (0.75, 1.25)  # ±25% of default position
+        # self.events.reset_robot_joints.params["velocity_range"] = (-0.2, 0.2)  # Small initial velocities
 
-        self.events.reset_base.params["pose_range"] = {"x": (-0.3, 0.3), "y": (-0.3, 0.3), "yaw": (-3.14, 3.14)}
-        self.events.reset_base.params["velocity_range"] = {
-            "x": (-0.3, 0.3),
-            "y": (-0.3, 0.3),
-            "z": (-0.1, 0.1),
-            "roll": (-0.25, 0.25),
-            "pitch": (-0.25, 0.25),
-            "yaw": (-0.35, 0.35),
-        }
+        # self.events.reset_base.params["pose_range"] = {"x": (-0.3, 0.3), "y": (-0.3, 0.3), "yaw": (-3.14, 3.14)}
+        # self.events.reset_base.params["velocity_range"] = {
+        #     "x": (-0.3, 0.3),
+        #     "y": (-0.3, 0.3),
+        #     "z": (-0.1, 0.1),
+        #     "roll": (-0.25, 0.25),
+        #     "pitch": (-0.25, 0.25),
+        #     "yaw": (-0.35, 0.35),
+        # }
         
         # Adjust external force disturbances
         # self.events.base_external_force_torque.params["force_range"] = (-5.0, 5.0)
         
         # Adjust push robot velocity (for balance recovery training)
-        self.events.push_robot.params["velocity_range"] = {"x": (-2.5, 2.5), "y": (-2.5, 2.5)}
-        self.events.push_robot.interval_range_s = (3.0, 20.0)
+        # self.events.push_robot.params["velocity_range"] = {"x": (-2.5, 2.5), "y": (-2.5, 2.5)}
+        # self.events.push_robot.interval_range_s = (3.0, 20.0)
 
         # Rewards
         self.rewards.undesired_contacts = None
