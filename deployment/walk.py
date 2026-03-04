@@ -7,11 +7,14 @@ Handles joint remapping, PD control, and body-frame velocity transformations.
 import argparse
 import time
 from dataclasses import dataclass
+from typing import List, Optional
 
 import mujoco
 import mujoco.viewer as viewer
 import numpy as np
 import torch
+import rerun as rr
+import rerun_loader_mjcf
 
 from keyboard_reader import KeyboardController
 
@@ -114,8 +117,127 @@ class SimulationConfig:
     vel_scale_x: float = 0.5
     vel_scale_y: float = 0.5
     vel_scale_rot: float = 1.0
-    keyboard: bool = True
     time_walk: int = 10
+    trajectory_save_path: str = "h1_walk_trajectory.npz"
+
+@dataclass
+class SimulationTrajectory:
+    """Recorded simulation trajectory data.
+    
+    Contains full state history from a simulation run, suitable for
+    analysis, replay, or conversion to various formats.
+    """
+    timestamps: np.ndarray           # (T,) simulation times
+    base_positions: np.ndarray       # (T, 3) xyz positions
+    base_quaternions: np.ndarray     # (T, 4) orientations [w, x, y, z]
+    base_linear_velocities: np.ndarray   # (T, 3) linear velocities
+    base_angular_velocities: np.ndarray  # (T, 3) angular velocities
+    joint_positions: np.ndarray      # (T, 19) joint angles
+    joint_velocities: np.ndarray     # (T, 19) joint velocities
+    joint_torques: np.ndarray        # (T, 19) applied torques
+    
+    @classmethod
+    def from_lists(
+        cls,
+        timestamps: List[float],
+        base_positions: List[np.ndarray],
+        base_quaternions: List[np.ndarray],
+        base_linear_velocities: List[np.ndarray],
+        base_angular_velocities: List[np.ndarray],
+        joint_positions: List[np.ndarray],
+        joint_velocities: List[np.ndarray],
+        joint_torques: List[np.ndarray],
+    ) -> "SimulationTrajectory":
+        """Create trajectory from lists (used during recording)."""
+        return cls(
+            timestamps=np.array(timestamps, dtype=np.float64),
+            base_positions=np.stack(base_positions, axis=0),
+            base_quaternions=np.stack(base_quaternions, axis=0),
+            base_linear_velocities=np.stack(base_linear_velocities, axis=0),
+            base_angular_velocities=np.stack(base_angular_velocities, axis=0),
+            joint_positions=np.stack(joint_positions, axis=0),
+            joint_velocities=np.stack(joint_velocities, axis=0),
+            joint_torques=np.stack(joint_torques, axis=0),
+        )
+    
+    def __len__(self) -> int:
+        return len(self.timestamps)
+    
+    def __repr__(self) -> str:
+        duration = self.timestamps[-1] - self.timestamps[0] if len(self) > 0 else 0
+        return f"SimulationTrajectory(steps={len(self)}, duration={duration:.2f}s)"
+    
+    def save_npz(self, path: str) -> str:
+        """Save trajectory to compressed numpy file."""
+        np.savez_compressed(
+            path,
+            timestamps=self.timestamps,
+            base_positions=self.base_positions,
+            base_quaternions=self.base_quaternions,
+            base_linear_velocities=self.base_linear_velocities,
+            base_angular_velocities=self.base_angular_velocities,
+            joint_positions=self.joint_positions,
+            joint_velocities=self.joint_velocities,
+            joint_torques=self.joint_torques,
+        )
+        return path
+    
+    @classmethod
+    def load_npz(cls, path: str) -> "SimulationTrajectory":
+        """Load trajectory from numpy file."""
+        data = np.load(path)
+        return cls(
+            timestamps=data["timestamps"],
+            base_positions=data["base_positions"],
+            base_quaternions=data["base_quaternions"],
+            base_linear_velocities=data["base_linear_velocities"],
+            base_angular_velocities=data["base_angular_velocities"],
+            joint_positions=data["joint_positions"],
+            joint_velocities=data["joint_velocities"],
+            joint_torques=data["joint_torques"],
+        )
+    
+    def to_rerun(self, model: mujoco.MjModel, spawn: bool = True, save_path: str = None) -> Optional[str]:
+        """Convert trajectory to Rerun visualization.
+        
+        Args:
+            model: MuJoCo model for MJCF logging
+            spawn: If True, spawn Rerun viewer
+            save_path: If provided, save to .rrd file
+            
+        Returns:
+            Path to saved file if save_path provided, else None
+        """
+        rr.init("h1_trajectory_replay", spawn=False)
+        logger = rerun_loader_mjcf.MJCFLogger(model)
+        logger.log_model()
+        
+        # Create temporary MjData to set poses for logging
+        data = mujoco.MjData(model)
+        
+        for i, t in enumerate(self.timestamps):
+            rr.set_time("sim_time", timestamp=t)
+            
+            # Set state in data for MJCF logger
+            data.time = t
+            data.qpos[:3] = self.base_positions[i]
+            data.qpos[3:7] = self.base_quaternions[i]
+            data.qpos[7:] = self.joint_positions[i]
+            data.qvel[:3] = self.base_linear_velocities[i]
+            data.qvel[3:6] = self.base_angular_velocities[i]
+            data.qvel[6:] = self.joint_velocities[i]
+            data.ctrl[:] = self.joint_torques[i]
+            
+            mujoco.mj_forward(model, data)
+            logger.log_data(data)
+        
+        if save_path:
+            rr.save(save_path)
+            return save_path
+        elif spawn:
+            rr.spawn()
+        return None
+
 
 
 class TorchController:
@@ -145,7 +267,7 @@ class TorchController:
 
         self._counter = 0
         self._n_substeps = config.n_substeps
-        self._keyboard = config.keyboard
+        self._keyboard = None
         self._start_time = None
         self._vel_scale_x = config.vel_scale_x
         self.time_walk = config.time_walk
@@ -207,31 +329,6 @@ class TorchController:
             if elapsed < self.time_walk + 1.0:
                 vx_world = self._vel_scale_x
 
-            # if elapsed < 1.0:
-            #     # Wait 1 second
-            #     pass
-            # elif elapsed < 6.0:
-            #     # W for 5 seconds (1s to 6s) - forward
-            #     vx_world = self._vel_scale_x
-            # elif elapsed < 7.0:
-            #     # Wait 1 second (6s to 7s)
-            #     pass
-            # elif elapsed < 8.5:
-            #     # Q for 3 seconds (7s to 10s) - rotate left
-            #     vyaw_world = self._vel_scale_x  # Positive yaw
-            # elif elapsed < 12.0:
-            #     # Wait 1 second (10s to 11s)
-            #     pass
-            # elif elapsed < 15.5:
-            #     # E for 3 seconds (11s to 14s) - rotate right
-            #     vyaw_world = -self._vel_scale_x  # Negative yaw
-            # elif elapsed < 18.0:
-            #     # Wait 1 second (14s to 15s)
-            #     pass
-            # elif elapsed < 22.0:
-            #     # W for 3 seconds (15s to 18s) - forward
-            #     vx_world = self._vel_scale_x
-            
             # Transform to body frame
             cos_yaw = np.cos(yaw)
             sin_yaw = np.sin(yaw)
@@ -297,34 +394,19 @@ class TorchController:
 
             data.ctrl[:] = torques
 
-
 class Walk:
-    """Main simulation orchestrator for H1 robot walk.
+    """Main class to run the H1 robot walk simulation."""
     
-    Initializes MuJoCo simulation and policy controller, then launches interactive viewer.
-    """
-    
-    def __init__(self, config: SimulationConfig = None) -> None:
-        """Initialize walk simulation.
+    def __init__(self, config: SimulationConfig) -> None:
+        """Initialize the simulation environment and controller.
         
         Args:
-            config: Simulation configuration. If None, uses default configuration.
+            config: Simulation configuration parameters
         """
         self._config = config or SimulationConfig()
-        self._load_model()
-        self._controller = TorchController(
-            config=self._config,
-            default_angles=DEFAULT_ANGLES,
-        )
-    
-    def _load_model(self) -> None:
-        """Load MuJoCo model and initialize simulation data.
-        
-        Sets up physics parameters, initial pose, and forward kinematics.
-        Initializes self._model and self._data.
-        """
         model = mujoco.MjModel.from_xml_path(SCENE_PATH)
-
+        
+        # Instantiating the model and data before the controller to ensure they are available for observation generation
         model.opt.timestep = 0.0005
         model.opt.iterations = 1
         model.opt.integrator = mujoco.mjtIntegrator.mjINT_EULER
@@ -332,96 +414,101 @@ class Walk:
         data = mujoco.MjData(model)
         mujoco.mj_resetData(model, data)
         mujoco.mj_forward(model, data)
-
-        data.qpos[:3] = np.array([0, 0, 1.05])
-        data.qpos[3:7] = np.array([1, 0, 0, 0])
-        data.qpos[7:] = DEFAULT_ANGLES.copy()
-
+        data.qpos[:3] = np.array([0.0, 0.0, 1.05])  # Start slightly above the ground to avoid initial penetration
+        data.qpos[3:7] = np.array([1.0, 0.0, 0.0, 0.0])  # No initial rotation (quaternion)
+        data.qpos[7:] = DEFAULT_ANGLES.copy()  # Set initial joint angles to default pose
+        
         mujoco.mj_forward(model, data)
-
         print(f"Model loaded: {model.nq} qpos, {model.nv} qvel, {model.nu} actuators")
         print(f"Initial gravity: {model.opt.gravity}")
 
+
         self._model = model
         self._data = data
+        self._controller = TorchController(
+            config=self._config,
+            default_angles=DEFAULT_ANGLES,
+        )
+
+        # Initialize Rerun logging
+        rr.init("h1_walk_simulation", spawn=True)
+        self._logger = rerun_loader_mjcf.MJCFLogger(self._model)
+        self._logger.log_model()
+        self._last_log_time = -1
+        self._log_dt = 1.0 / 30.0 # Log at 30 Hz
+
+
+    def _record_trajectory(self, log_hz: float = 30.0, save_path: str = None) -> SimulationTrajectory:
+        """Run simulation and return structured trajectory data.
+        
+        Runs the complete simulation without any viewers, recording
+        all state data at the specified frequency.
+        
+        Args:
+            log_hz: Logging frequency in Hz (default 30)
+            save_path: Path to save the recorded trajectory (optional)
+        Returns:
+            SimulationTrajectory containing all recorded state data
+        """
+        log_dt = 1.0 / log_hz
+        last_logged_time = -1.0
+        
+        # Recording buffers
+        timestamps = []
+        base_positions = []
+        base_quaternions = []
+        base_linear_velocities = []
+        base_angular_velocities = []
+        joint_positions = []
+        joint_velocities = []
+        joint_torques = []
+        
+        duration = self._config.time_walk + 2.0
+        print(f"Recording trajectory for {duration:.1f}s at {log_hz}Hz...")
+        
+        while self._data.time < duration:
+            # Run controller
+            self._controller.get_control(self._model, self._data)
+            
+            # Log at fixed intervals
+            current_time = self._data.time
+            if current_time - last_logged_time >= log_dt:
+                timestamps.append(current_time)
+                base_positions.append(self._data.qpos[:3].copy())
+                base_quaternions.append(self._data.qpos[3:7].copy())
+                base_linear_velocities.append(self._data.qvel[:3].copy())
+                base_angular_velocities.append(self._data.qvel[3:6].copy())
+                joint_positions.append(self._data.qpos[7:].copy())
+                joint_velocities.append(self._data.qvel[6:].copy())
+                joint_torques.append(self._data.ctrl[:].copy())
+                last_logged_time = current_time
+            
+            mujoco.mj_step(self._model, self._data)
+        
+        trajectory = SimulationTrajectory.from_lists(
+            timestamps=timestamps,
+            base_positions=base_positions,
+            base_quaternions=base_quaternions,
+            base_linear_velocities=base_linear_velocities,
+            base_angular_velocities=base_angular_velocities,
+            joint_positions=joint_positions,
+            joint_velocities=joint_velocities,
+            joint_torques=joint_torques,
+        )
+        
+        print(f"Recording complete: {trajectory}")
+        trajectory.save_npz(save_path)
+        return trajectory
     
     def execute(self) -> None:
-        """Launch MuJoCo viewer and start simulation."""
-        mujoco.set_mjcb_control(self._controller.get_control)
-        viewer.launch(self._model, self._data)
+        """Run the simulation with real-time visualization and logging."""
+        trajectory = self._record_trajectory(log_hz=30.0, save_path=self._config.trajectory_save_path)
+        trajectory.to_rerun(self._model, spawn=True)
+
+        # Print summary
+        print(f"\nTrajectory summary:")
+        print(f"  Duration: {trajectory.timestamps[-1]:.2f}s")
+        print(f"  Steps: {len(trajectory)}")
+        print(f"  Base position range: {trajectory.base_positions.min(axis=0)} to {trajectory.base_positions.max(axis=0)}")
 
 
-def main() -> None:
-    """CLI entry point for H1 robot walk simulation."""
-    parser = argparse.ArgumentParser(description="H1 Robot Walk Simulation")
-    parser.add_argument(
-        "--policy_path",
-        type=str,
-        default=POLICY_PATH,
-        help="Path to the PyTorch policy model.",
-    )
-    parser.add_argument(
-        "--n_substeps",
-        type=int,
-        default=4,
-        help="Number of simulation substeps per control step.",
-    )
-    parser.add_argument(
-        "--action_scale",
-        type=float,
-        default=0.5,
-        help="Scaling factor for the actions output by the policy.",
-    )
-    parser.add_argument(
-        "--vel_scale_x",
-        type=float,
-        default=0.5,
-        help="Scaling factor for forward/backward velocity commands.",
-    )
-    parser.add_argument(
-        "--vel_scale_y",
-        type=float,
-        default=0.5,
-        help="Scaling factor for lateral velocity commands.",
-    )
-    parser.add_argument(
-        "--vel_scale_rot",
-        type=float,
-        default=1.0,
-        help="Scaling factor for rotational velocity commands.",
-    )
-    parser.add_argument(
-        "--no-keyboard",
-        dest="keyboard",
-        action="store_false",
-        default=True,
-        help="Disable keyboard control and use automated mode (1s wait, 4s forward).",
-    )
-    parser.add_argument(
-        "--time_walk",
-        type=int,
-        default=10,
-        help="Number of seconds to run locomotion.",
-    )
-    
-
-    args = parser.parse_args()
-
-    config = SimulationConfig(
-        policy_path=args.policy_path,
-        n_substeps=args.n_substeps,
-        action_scale=args.action_scale,
-        vel_scale_x=args.vel_scale_x,
-        vel_scale_y=args.vel_scale_y,
-        vel_scale_rot=args.vel_scale_rot,
-        keyboard=args.keyboard,
-        time_walk=args.time_walk,
-    )
-
-    walk_simulation = Walk(config=config)
-    walk_simulation.execute()
-
-
-if __name__ == "__main__":
-    main()
-    

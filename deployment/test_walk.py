@@ -12,8 +12,6 @@ import mujoco
 import mujoco.viewer as viewer
 import numpy as np
 import torch
-import rerun as rr
-import rerun_loader_mjcf
 
 from keyboard_reader import KeyboardController
 
@@ -318,28 +316,6 @@ class Walk:
             config=self._config,
             default_angles=DEFAULT_ANGLES,
         )
-        rr.init("h1_walk_simulation", spawn=True)
-        self._logger = rerun_loader_mjcf.MJCFLogger(self._model)
-        self._logger.log_model()
-        self._last_logged_time = -1
-        self._log_dt = 1.0/30.0  # Log at 30 Hz
-
-    def _control_and_log(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
-        """MuJoCo control callback with integrated logging.
-        
-        Calls the controller to compute torques, then logs simulation state at fixed intervals.
-        
-        Args:
-            model: MuJoCo model
-            data: MuJoCo simulation data (modified in-place)
-        """
-        self._controller.get_control(model, data)
-
-        current_time = data.time
-        if current_time - self._last_logged_time >= self._log_dt:
-            rr.set_time("sim_time", duration=current_time)
-            self._logger.log_data(data)
-            self._last_logged_time = current_time
     
     def _load_model(self) -> None:
         """Load MuJoCo model and initialize simulation data.
@@ -369,21 +345,10 @@ class Walk:
         self._model = model
         self._data = data
     
-    def execute(self, headless: bool = False) -> None:
-        """Launch simulation with optional MuJoCo viewer.
-        
-        Args:
-            headless: If True, run without MuJoCo viewer (Rerun only).
-        """
-        if headless:
-            # Run simulation without viewer - only Rerun output
-            duration = self._config.time_walk + 2.0  # Add buffer time
-            while self._data.time < duration:
-                self._control_and_log(self._model, self._data)
-                mujoco.mj_step(self._model, self._data)
-        else:
-            mujoco.set_mjcb_control(self._control_and_log)
-            viewer.launch(self._model, self._data)
+    def execute(self) -> None:
+        """Launch MuJoCo viewer and start simulation."""
+        mujoco.set_mjcb_control(self._controller.get_control)
+        viewer.launch(self._model, self._data)
 
 
 def main() -> None:
@@ -438,12 +403,6 @@ def main() -> None:
         default=10,
         help="Number of seconds to run locomotion.",
     )
-    parser.add_argument(
-        "--headless",
-        action="store_true",
-        default=False,
-        help="Run without MuJoCo viewer (Rerun visualization only).",
-    )
     
 
     args = parser.parse_args()
@@ -460,7 +419,7 @@ def main() -> None:
     )
 
     walk_simulation = Walk(config=config)
-    walk_simulation.execute(headless=args.headless)
+    walk_simulation.execute()
 
 
 if __name__ == "__main__":
