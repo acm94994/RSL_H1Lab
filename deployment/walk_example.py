@@ -1,5 +1,19 @@
 from walk import *
 
+def simulate_walk(walk_simulation: Walk) -> SimulationTrajectory:
+    trajectory_walk = walk_simulation.execute()
+    # Print summary
+    print(f"\nTrajectory summary:")
+    print(f"  Duration: {trajectory_walk.timestamps[-1]:.2f}s")
+    print(f"  Steps: {len(trajectory_walk)}")
+    print(f"  Base position range: {trajectory_walk.base_positions.min(axis=0)} to {trajectory_walk.base_positions.max(axis=0)}")
+    return trajectory_walk
+
+def visualize_trajectory(walk_sim: Walk, trajectory: SimulationTrajectory) -> None:
+    # Visualize the trajectory using Rerun
+    print("\nVisualizing trajectory in Rerun...")
+    trajectory.to_rerun(walk_sim._model, spawn=True)
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="H1 Humanoid Robot Walk Simulation with MuJoCo")
     parser.add_argument("--policy_path", type=str, default=POLICY_PATH, help="Path to the trained PyTorch policy (.pt file)")
@@ -59,7 +73,14 @@ def main() -> None:
     )
 
     walk_simulation = Walk(config)
-    walk_simulation.execute()
+    trajectory_walk = simulate_walk(walk_simulation)
+
+    visualize_trajectory(walk_simulation, trajectory_walk)
+        
+
+    
+    
+
 
 if __name__ == "__main__":
     main()

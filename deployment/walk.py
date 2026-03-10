@@ -430,12 +430,7 @@ class Walk:
             default_angles=DEFAULT_ANGLES,
         )
 
-        # Initialize Rerun logging
-        rr.init("h1_walk_simulation", spawn=True)
-        self._logger = rerun_loader_mjcf.MJCFLogger(self._model)
-        self._logger.log_model()
-        self._last_log_time = -1
-        self._log_dt = 1.0 / 30.0 # Log at 30 Hz
+
 
 
     def _record_trajectory(self, log_hz: float = 30.0, save_path: str = None) -> SimulationTrajectory:
@@ -500,15 +495,18 @@ class Walk:
         trajectory.save_npz(save_path)
         return trajectory
     
-    def execute(self) -> None:
+    def execute(self) -> SimulationTrajectory:
         """Run the simulation with real-time visualization and logging."""
         trajectory = self._record_trajectory(log_hz=30.0, save_path=self._config.trajectory_save_path)
-        trajectory.to_rerun(self._model, spawn=True)
+        # # trajectory.to_rerun(self._model, spawn=True)
+        
 
-        # Print summary
-        print(f"\nTrajectory summary:")
-        print(f"  Duration: {trajectory.timestamps[-1]:.2f}s")
-        print(f"  Steps: {len(trajectory)}")
-        print(f"  Base position range: {trajectory.base_positions.min(axis=0)} to {trajectory.base_positions.max(axis=0)}")
+        # # Print summary
+        # print(f"\nTrajectory summary:")
+        # print(f"  Duration: {trajectory.timestamps[-1]:.2f}s")
+        # print(f"  Steps: {len(trajectory)}")
+        # print(f"  Base position range: {trajectory.base_positions.min(axis=0)} to {trajectory.base_positions.max(axis=0)}")
+
+        return trajectory
 
 
